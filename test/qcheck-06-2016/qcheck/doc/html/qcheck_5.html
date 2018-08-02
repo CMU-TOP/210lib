@@ -1,0 +1,247 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created on May 23, 2016 by texi2html 5.0
+texi2html was written by: 
+            Lionel Cons <Lionel.Cons@cern.ch> (original author)
+            Karl Berry  <karl@freefriends.org>
+            Olaf Bachmann <obachman@mathematik.uni-kl.de>
+            and many others.
+Maintained by: Many creative people.
+Send bugs and suggestions to <texi2html-bug@nongnu.org>
+-->
+<head>
+<title>QCheck/SML: 5 Properties</title>
+
+<meta name="description" content="QCheck/SML: 5 Properties">
+<meta name="keywords" content="QCheck/SML: 5 Properties">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="texi2html 5.0">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.smallquotation {font-size: smaller}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+div.smalldisplay {margin-left: 3.2em}
+div.smallexample {margin-left: 3.2em}
+div.smalllisp {margin-left: 3.2em}
+pre.display {font-family: serif}
+pre.format {font-family: serif}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+pre.smalldisplay {font-family: serif; font-size: smaller}
+pre.smallexample {font-size: smaller}
+pre.smallformat {font-family: serif; font-size: smaller}
+pre.smalllisp {font-size: smaller}
+span.nocodebreak {white-space:pre}
+span.nolinebreak {white-space:pre}
+span.roman {font-family:serif; font-weight:normal}
+span.sansserif {font-family:sans-serif; font-weight:normal}
+ul.no-bullet {list-style: none}
+body {
+    font-family: "Trebuchet MS", "Bitstream Vera Sans", sans-serif;
+    font-size: 11pt;
+    color: #111;
+}
+a {
+    text-decoration: none;
+    border-bottom: 1px dotted #ccc;
+}
+a:link {
+    color: #007;
+}
+a:visited {
+    color: #707;
+}
+a:hover {
+    border-bottom: 1px solid #ccc;
+}
+
+-->
+</style>
+
+
+</head>
+
+<body lang="en" bgcolor="#FFFFFF" text="#000000" link="#0000FF" vlink="#800080" alink="#FF0000">
+
+<a name="Properties"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="qcheck_4.html#Generating-test-cases" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="qcheck_4.html#Recursive-types" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="qcheck.html#Top" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Statistical-distribution" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="qcheck_6.html#Settings" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="qcheck.html#Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="qcheck_toc.html#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="qcheck_9.html#Index" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="qcheck_abt.html#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<a name="Properties-1"></a>
+<h1 class="chapter">5 Properties</h1>
+<p> A predicate is just a boolean function over some type.  A property
+carries some additional data about preconditions and statistics.
+</p>
+<div class="example">
+<pre class="example"><b>type</b> 'a pred = 'a &rarr; bool                             
+<a name="index-pred"></a><b>type</b> 'a prop                                          
+<a name="index-prop"></a><b>val</b> pred : 'a pred &rarr; 'a prop                         
+<a name="index-pred-1"></a><b>val</b> pred2 : ('a * 'b) pred &rarr; 'b &rarr; 'a  prop          
+<a name="index-pred2"></a>
+</pre></div>
+<p> This function and operator are the same: they construct conditional
+properties.  Test cases that fail the precondition are not counted. 
+</p><div class="example">
+<pre class="example"><b>val</b> implies : 'a pred * 'a prop &rarr; 'a prop            
+<a name="index-implies"></a><b>val</b> ==&gt; : 'a pred * 'a pred &rarr; 'a prop                
+<a name="index-_003d_003d_003e"></a>
+</pre></div>
+ 
+<hr>
+<a name="Statistical-distribution"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Properties" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Properties" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Properties" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Results" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="qcheck_6.html#Settings" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="qcheck.html#Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="qcheck_toc.html#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="qcheck_9.html#Index" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="qcheck_abt.html#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h2 class="section">5.1 Statistical distribution</h2>
+<p>One problem with random test-case generation is that we don&rsquo;t know 
+for sure what we&rsquo;re getting.  QCheck provides a way to observe the 
+distribution of test cases by tagging them based on user-definable
+criteria.  For example, suppose we want to test the <code>ListMergeSort</code>
+module in the SML/NJ library, by generating random integer lists.
+</p>
+<p>If we generate and pass 100 cases, what does that mean?  Sorting a list
+with fewer than 2 elements is pretty easy, so how many of our 100 cases 
+are that trivial?  Also, how many of the lists are already ordered?  The
+following functions are designed to help you answer such questions.
+</p> 
+<div class="example">
+<pre class="example"><b>val</b> trivial : 'a pred &rarr; 'a prop &rarr; 'a prop           
+<a name="index-trivial"></a><b>val</b> classify : 'a pred &rarr; string &rarr; 'a prop &rarr; 'a prop
+<a name="index-classify"></a><b>val</b> classify' : ('a &rarr; string option) &rarr; 'a prop &rarr;   
+<a name="index-classify_0027"></a>                'a prop 
+</pre></div>
+<p> Here are some examples of how they work.
+</p><div class="example">
+<pre class="example">fun fewer_than n L = length L &lt; n
+
+val sort_ok = ListMergeSort.sorted op&gt; o
+              ListMergeSort.sort op&gt;
+
+val sort_test = trivial (fewer_than 2)
+               (classify (ListMergeSort.sorted op&gt;) &quot;pre-sorted&quot;
+               (pred sort_ok))
+
+checkGen (Gen.list (Gen.flip'(1,9)) Gen.Int.int, NONE)
+         (&quot;ListMergeSort&quot;, sort_test)
+</pre></div>
+<p>Now the test result, if passing, will be accompanied with some
+statistics on the distribution of the specified properties.
+</p><div class="example">
+<pre class="example">&rsaquo; ListMergeSort..........ok      (100 passed)         33% pre-sorted
+&rsaquo;                                                     28% trivial
+</pre></div>
+<p>The functions <code>classify</code> and <code>trivial</code> are specializations of
+the more general <code>classify'</code> (prime), with which we can provide a 
+function that returns the tag.  To see the complete distribution of list 
+lengths, try this:
+</p><div class="example">
+<pre class="example">fun sizeTag n = 
+    &quot;length &quot;^ StringCvt.padLeft #&quot; &quot; 3 (Int.toString n)
+
+val sort_test = classify' (SOME o sizeTag o length) (pred sort_ok)
+checkGen (Gen.list (Gen.flip'(1,9)) Gen.Int.int, NONE)
+         (&quot;ListMergeSort&quot;, sort_test)
+
+&rsaquo; ListMergeSort..........ok      (100 passed)         13% length   0
+&rsaquo;                                                      7% length   1
+&rsaquo;                                                      6% length   2
+&rsaquo;                                                     13% length   3
+&rsaquo;                                                      8% length   4
+&rsaquo;                                                      6% length   5
+&rsaquo;                                                      3% length   6
+&rsaquo;                                                      2% length   7
+&rsaquo;                                                      5% length   8
+&rsaquo;                                                      5% length   9
+&rsaquo;                                                      2% length  10
+&rsaquo;                                                      5% length  11
+&rsaquo;                                                      3% length  12
+</pre></div>
+<p>The list goes on: the maximum length list generated in this run was
+43.
+</p>
+<div class="example">
+<pre class="example">
+</pre></div>
+
+<hr>
+<a name="Results"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Properties" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Statistical-distribution" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Properties" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="qcheck_6.html#Settings" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="qcheck_6.html#Settings" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="qcheck.html#Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="qcheck_toc.html#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="qcheck_9.html#Index" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="qcheck_abt.html#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<h2 class="section">5.2 Results</h2>
+
+<div class="example">
+<pre class="example"><b>type</b> result = bool option                             
+<a name="index-result"></a><b>type</b> stats = { tags : StringBag.bag,                  
+<a name="index-stats"></a>               count : int }
+
+<b>val</b> test : 'a prop &rarr; 'a * stats &rarr; result * stats    
+<a name="index-test"></a><b>val</b> stats : stats                                     
+<a name="index-stats-1"></a><b>val</b> success : result pred                             
+<a name="index-success"></a><b>val</b> failure : result pred                             
+<a name="index-failure"></a></pre></div>
+
+<hr>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Properties" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="qcheck_6.html#Settings" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="qcheck.html#Top" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="qcheck_toc.html#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="qcheck_9.html#Index" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="qcheck_abt.html#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<p>
+ <font size="-1">
+  This document was generated on <i>May 23, 2016</i> using <a href="http://www.nongnu.org/texi2html/"><i>texi2html 5.0</i></a>.
+ </font>
+ <br>
+
+</p>
+</body>
+</html>

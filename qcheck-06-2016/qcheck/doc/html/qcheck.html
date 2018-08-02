@@ -1,0 +1,147 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created on May 23, 2016 by texi2html 5.0
+texi2html was written by: 
+            Lionel Cons <Lionel.Cons@cern.ch> (original author)
+            Karl Berry  <karl@freefriends.org>
+            Olaf Bachmann <obachman@mathematik.uni-kl.de>
+            and many others.
+Maintained by: Many creative people.
+Send bugs and suggestions to <texi2html-bug@nongnu.org>
+-->
+<head>
+<title>QCheck/SML</title>
+
+<meta name="description" content="QCheck/SML">
+<meta name="keywords" content="QCheck/SML">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="texi2html 5.0">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+<!--
+a.summary-letter {text-decoration: none}
+blockquote.smallquotation {font-size: smaller}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+div.smalldisplay {margin-left: 3.2em}
+div.smallexample {margin-left: 3.2em}
+div.smalllisp {margin-left: 3.2em}
+pre.display {font-family: serif}
+pre.format {font-family: serif}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+pre.smalldisplay {font-family: serif; font-size: smaller}
+pre.smallexample {font-size: smaller}
+pre.smallformat {font-family: serif; font-size: smaller}
+pre.smalllisp {font-size: smaller}
+span.nocodebreak {white-space:pre}
+span.nolinebreak {white-space:pre}
+span.roman {font-family:serif; font-weight:normal}
+span.sansserif {font-family:sans-serif; font-weight:normal}
+ul.no-bullet {list-style: none}
+body {
+    font-family: "Trebuchet MS", "Bitstream Vera Sans", sans-serif;
+    font-size: 11pt;
+    color: #111;
+}
+a {
+    text-decoration: none;
+    border-bottom: 1px dotted #ccc;
+}
+a:link {
+    color: #007;
+}
+a:visited {
+    color: #707;
+}
+a:hover {
+    border-bottom: 1px solid #ccc;
+}
+
+-->
+</style>
+
+
+</head>
+
+<body lang="en" bgcolor="#FFFFFF" text="#000000" link="#0000FF" vlink="#800080" alink="#FF0000">
+
+<h1>QCheck/SML</h1>
+<h3 align="right">An automatic testing library for Standard ML</h3>
+<h3 align="right">version 1.2</h3>
+<strong>Christopher League <a href="mailto:league@contrapunctus.net">league@contrapunctus.net</a></strong><br>
+
+<p>Copyright &copy; 2007 Christopher League.
+</p>
+<p>This manual describes QCheck/SML (version 1.2), an
+automatic testing library for Standard ML.  It is modeled after the
+QuickCheck library for Haskell (ICFP 2000) by Koen Claessen and John
+Hughes, with many thanks.  QCheck/SML (including this manual) is free
+software.See section <a href="qcheck_8.html#License">License</a>.
+</p>
+<p><a href="https://github.com/league/qcheck">https://github.com/league/qcheck</a>
+</p><hr>
+<a name="Top"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[ &lt; ]</td>
+<td valign="middle" align="left">[<a href="qcheck_1.html#Overview" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="qcheck_toc.html#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="qcheck_9.html#Index" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="qcheck_abt.html#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<a name="QCheck_002fSML"></a>
+<h1 class="top">QCheck/SML</h1>
+<p>Copyright &copy; 2007 Christopher League.
+</p>
+<p>This manual describes QCheck/SML (version 1.2), an
+automatic testing library for Standard ML.  It is modeled after the
+QuickCheck library for Haskell (ICFP 2000) by Koen Claessen and John
+Hughes, with many thanks.  QCheck/SML (including this manual) is free
+software.See section <a href="qcheck_8.html#License">License</a>.
+</p>
+<p><a href="https://github.com/league/qcheck">https://github.com/league/qcheck</a>
+</p>
+
+<table class="menu" border="0" cellspacing="0">
+<tr><td align="left" valign="top"><a href="qcheck_1.html#Overview">1 Overview</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">                    What is QCheck?
+</td></tr>
+<tr><td align="left" valign="top"><a href="qcheck_2.html#Installation">2 Installation</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">                How do I build and install it?
+</td></tr>
+<tr><td align="left" valign="top"><a href="qcheck_3.html#Specifying-test-cases">3 Specifying test cases</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">       QCheck can extract cases from files.
+</td></tr>
+<tr><td align="left" valign="top"><a href="qcheck_4.html#Generating-test-cases">4 Generating test cases</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">       Test cases can be randomly generated.
+</td></tr>
+<tr><td align="left" valign="top"><a href="qcheck_5.html#Properties">5 Properties</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">                  Specifying properties to be tested.
+</td></tr>
+<tr><td align="left" valign="top"><a href="qcheck_6.html#Settings">6 Settings</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">                    Many settings are configurable.
+</td></tr>
+<tr><td align="left" valign="top"><a href="qcheck_7.html#Release-notes">7 Release notes</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">               Summary of user-visible changes.
+</td></tr>
+<tr><td align="left" valign="top"><a href="qcheck_8.html#License">8 License</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">                     Redistribution is permitted.
+</td></tr>
+<tr><td align="left" valign="top"><a href="qcheck_9.html#Index">Index</a></td><td>&nbsp;&nbsp;</td><td align="left" valign="top">
+</td></tr>
+</table>
+
+
+<hr>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[ &lt; ]</td>
+<td valign="middle" align="left">[<a href="qcheck_1.html#Overview" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="qcheck_toc.html#SEC_Contents" title="Table of contents">Contents</a>]</td>
+<td valign="middle" align="left">[<a href="qcheck_9.html#Index" title="Index">Index</a>]</td>
+<td valign="middle" align="left">[<a href="qcheck_abt.html#SEC_About" title="About (help)"> ? </a>]</td>
+</tr></table>
+<p>
+ <font size="-1">
+  This document was generated on <i>May 23, 2016</i> using <a href="http://www.nongnu.org/texi2html/"><i>texi2html 5.0</i></a>.
+ </font>
+ <br>
+
+</p>
+</body>
+</html>

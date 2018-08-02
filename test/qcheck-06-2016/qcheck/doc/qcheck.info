@@ -1,0 +1,1121 @@
+This is qcheck.info, produced by makeinfo version 6.1 from qcheck.texi.
+
+
+File: qcheck.info,  Node: Top,  Next: Overview,  Prev: (dir),  Up: (dir)
+
+QCheck/SML
+**********
+
+Copyright (C) 2007 Christopher League.
+
+   This manual describes QCheck/SML (version 1.2), an automatic testing
+library for Standard ML. It is modeled after the QuickCheck library for
+Haskell (ICFP 2000) by Koen Claessen and John Hughes, with many thanks.
+QCheck/SML (including this manual) is free software.*Note License::.
+
+   <https://github.com/league/qcheck>
+
+* Menu:
+
+* Overview::                    What is QCheck?
+* Installation::                How do I build and install it?
+* Specifying test cases::       QCheck can extract cases from files.
+* Generating test cases::       Test cases can be randomly generated.
+* Properties::                  Specifying properties to be tested.
+* Settings::                    Many settings are configurable.
+* Release notes::               Summary of user-visible changes.
+* License::                     Redistribution is permitted.
+* Index::
+
+
+File: qcheck.info,  Node: Overview,  Next: Installation,  Prev: Top,  Up: Top
+
+1 Overview
+**********
+
+QCheck is a library for automatic unit testing of Standard ML modules.
+You provide specifications (in the form of ML code) of the properties
+that your module's functions should satisfy, and ask QCheck to exercise
+the module with randomly-chosen test cases.  It will show how many cases
+passed the test, and print counter-examples in case of failure.
+Actually, random testing is just one possibility; QCheck can pull test
+cases from any kind of stream (disk file, data structure, etc.)
+
+1.1 Simple properties of integers
+=================================
+
+The best way to demonstrate the capabilities of QCheck is with a simple
+example.  Let's begin by writing a few tiny functions on integers:
+successor, even, and odd:
+
+     fun succ x = x+1
+     fun even x = x mod 2 = 0
+     fun odd x = x mod 2 = 1
+      -| val succ = fn : int -> int
+      -| val even = fn : int -> bool
+      -| val odd = fn : int -> bool
+
+Now we need to think of a property that we expect to hold for this
+implementation.  Here is a trivial one: every integer is _either_ even
+or odd.  That is, for any 'x' exactly _one_ of the functions 'even' or
+'odd' returns true; the other returns false.  One way to specify this in
+ML is to use '<>' (not equal), which amounts to an exclusive OR when
+applied to boolean values.
+
+     fun even_xor_odd x = even x <> odd x
+      -| val even_xor_odd = fn : int -> bool
+
+We now call upon QCheck to test this property on a bunch of randomly
+chosen integers.  QCheck checkers are polymorphic.  To test integers,
+we'll have to specify two things: a _generator_ that produces integers,
+and a _printer_ that can convert integers to strings (in case there are
+counter-examples to be printed).
+
+     open QCheck infix ==>
+     val int = (Gen.Int.int, SOME Int.toString)
+      -| val int = (fn,SOME fn) : int Gen.gen * (int -> string) option
+
+Finally, we call 'checkGen' with the 'int' spec, a string to identify
+the test, and the property we are testing.
+
+     checkGen int ("even<>odd", pred even_xor_odd);
+      -| even<>odd..............ok      (100 passed)        
+      -| val it = () : unit
+
+The output indicates that QCheck tested the property on 100 random
+integers, and all of them succeeded.  (The number of cases required to
+complete the test is configurable.  *Note Settings::.)
+
+   For the next example, we will demonstrate a _conditional_ property:
+the successor of any even number should be odd.
+
+     val succ_even_odd = even ==> odd o succ
+      -| val succ_even_odd = 
+
+     checkGen int ("even+1=odd", succ_even_odd);
+      -| : int prop
+      -| even+1=odd.............ok      (100 passed)        
+      -| val it = () : unit
+
+In this example, the 100 test cases that passed were all ones that met
+the condition: they were all even.  Odd numbers trivially satisfy the
+property (by falsifying the condition) and are not counted.
+
+   Now, let's try the inverse property: the successor of an odd number
+should be even:
+
+     checkGen int ("odd+1=even", odd ==> even o succ);
+      -| odd+1=even.............ok      (32 passed)         Shrinking...
+      -| odd+1=even.............FAILED  (49/50 passed)      Shrinking...
+      -| odd+1=even.............FAILED  (98/100 passed)     
+      -|       counter-examples:       1073741823
+      -|                               1073741823
+      -| val it = () : unit
+
+Oops!  QCheck found a counter-example: the maximum 31-bit integer.  It
+is odd, but since its successor is undefined, the property does not
+hold.  (We were not extraordinarily lucky to generate 'maxInt' this time
+around; in fact, the generator is biased so that zero, 'minInt', and
+'maxInt' are chosen more frequently than other integers, precisely
+because they are often "boundary conditions."  *Note Generating test
+cases::.)
+
+   At any rate, what is broken here is not really our implementation,
+but rather the specification of the property.  We need to limit it to
+odd integers that are less than 'maxInt'.
+
+     fun odd_not_max x = odd x andalso x < valOf(Int.maxInt);
+     checkGen int ("odd+1=even", odd_not_max ==> even o succ)
+      -| val odd_not_max = fn : int -> bool
+      -| odd+1=even.............ok      (100 passed)        
+      -| val it = () : unit
+
+1.2 Generating pairs of integers
+================================
+
+Other properties involve pairs of integers.  For example, the sum of two
+odd numbers is even.
+
+     fun both_odd(x,y) = odd x andalso odd y
+     fun sum_even(x,y) = even (x+y)
+     fun show_pair(x,y) = Int.toString x ^","^ Int.toString y
+      -| val both_odd = fn : int * int -> bool
+      -| val sum_even = fn : int * int -> bool
+      -| val show_pair = fn : int * int -> string
+
+QCheck includes not only generators for most primitive and aggregate
+data types, but also functions for combining them in various ways.  To
+generate random pairs of integers, we "zip" together two integer
+generators.
+
+     checkGen (Gen.zip(Gen.Int.int, Gen.Int.int), SOME show_pair)
+              ("odd+odd=even", both_odd ==> sum_even)
+      -| odd+odd=even...........ok      (44 passed)         Shrinking...
+      -| odd+odd=even...........FAILED  (96/97 passed)      
+      -|       counter-examples:       7689,1073741823
+      -| val it = () : unit
+
+All of the counter-examples overflow the sum computation.  I'll leave
+fixing this specification as an exercise for the reader.
+
+   Test cases need not be randomly generated.  Here is an example where
+the pairs will be taken from a list, but they could just as easily be
+read from a file.  *Note Specifying test cases::.
+
+     check (List.getItem, SOME show_pair)
+           ("sum_odds_even[]", both_odd ==> sum_even)
+           [(1,1), (3,5), (3,4), (* this one won't count! *)
+            (~1,1), (21,21), (7,13)]
+      -| sum_odds_even[]........ok      (5 passed)          
+      -| val it = () : unit
+
+I provided 6 pairs in the list, but only 5 counted because '(3,4)' did
+not meet the precondition of the property.
+
+1.3 The QCheck structure
+========================
+
+The examples in the preceding sections used several top-level functions
+from the 'QCheck' structure.  Here, we will examine the signature of
+'QCheck', beginning with its sub-structures.
+
+     structure Gen : GENERATOR_SIG
+     structure Files : FILES_SIG
+     structure Settings : SETTINGS_SIG
+The 'Gen' structure contains random value generators for all the basis
+types, including aggregates like vectors and lists.  It also contains a
+rich library of combinators such as 'zip', 'map', and 'filter'.  *Note
+Generating test cases::.
+
+   'Files' is provided to make it easy to use lines in a file or files
+in a directory as test cases.  *Note Specifying test cases::.
+'Settings' contains various user-customizable settings, including
+user-definable output styles.  *Note Settings::.
+
+     include PROPERTY_SIG
+This signature contains functions for specifying properties and
+observing the distribution of test cases.  In preceding sections, we met
+two of its members: 'pred' converts a predicate (boolean function) on a
+given type to a property, and '==>' creates a conditional property.  A
+property over a given type 't' has type 't prop'.  *Note Properties::.
+
+Two types are useful for discussing the parameters of the various
+'check' functions:
+
+     type ('a,'b) reader = 'b -> ('a * 'b) option
+     type 'a rep = ('a -> string) option
+An '('a,'b) reader' pulls objects of type ''a' from a stream of type
+''b'.  In this case, the objects are test cases of some type.  (This is
+defined the same way as 'StringCvt.reader'.)  The type ''a rep' is an
+(optional) method for rendering test cases as strings.  It is used in
+case there are counter-examples to be printed.
+
+Now, the most general function for invoking QCheck is called 'check'.
+It takes 3 (curried) parameters:
+
+     val check : ('a,'b) reader * 'a rep ->
+                 string * 'a prop ->
+                 'b -> unit
+  1. The first parameter is a reader and representation pair.  It
+     contains everything the checker needs to know about the type of the
+     test cases, and the same pair can be reused to check additional
+     properties of the same type.
+
+  2. Next is the property name and specification.  This parameter will
+     be different for each property checked.  The name is just a string
+     used to distinguish the results of this test in the output.
+
+  3. Finally, you provide a stream of test cases.  The source of the
+     test cases is arbitrary, as long as a matching reader is provided.
+     They could be randomly generated, read from a data structure,
+     extracted from the file system, etc.
+
+   We provide several specializations of 'check' that are useful in
+particular circumstances.  First, 'checkGen' is for checking randomly
+generated test cases.  The random number stream is implicit, and the
+reader is always a generator from the 'Gen' module.
+
+     val checkGen : 'a Gen.gen * 'a rep ->
+                    string * 'a prop -> unit
+
+   Second, if we just want to check one particular test case, the reader
+is trivial (and therefore omitted), and the 'stream' is just the test
+case itself:
+
+     val checkOne : 'a rep -> string * 'a prop -> 'a -> unit
+
+   Third, if we want to provide a shrinking function, QCheck will try to
+find a smaller counterexample:
+
+     val checkGenShrink : ('a -> 'a list) -> 'a Gen.gen * 'a rep ->
+                          string * 'a prop -> unit
+
+   Fourth, if we want to use the checker as an API, we can pass a
+continuation that takes a list of bad objects and some stats.
+
+     val cpsCheck :
+         ('a -> 'a list)
+         -> Property.stats
+         -> ('a, 's) reader * 'a rep
+         -> 'a prop
+         -> (string option * Property.result * Property.stats -> unit)
+         -> ('a list -> Property.stats -> 'b)
+         -> 's
+         -> 'b
+
+   Finally, the 'Qcheck' structure includes a pair 'version' that can be
+useful in determining the version of QCheck you are using.  The
+'context' contains expanded version information that can be used by
+darcs to reconstruct this precise configuration of QCheck.
+
+     val version : int * int
+     val context : string
+
+The version information currently reported by 'QCheck.version' is:
+     QCheck.version;
+      -| val it = (1,1) : int * int
+
+
+File: qcheck.info,  Node: Installation,  Next: Specifying test cases,  Prev: Overview,  Up: Top
+
+2 Installation
+**************
+
+QCheck is designed to work with various implementations of Standard ML.
+At the time of release, it was built successfully on the following
+systems:
+   * Standard ML of New Jersey v110.79 [built: Sat Nov 21 15:48:37 2015]
+   * Moscow ML compiler version 2.10
+   * MLton 20130715 (built Thu Nov 6 11:40:47 CET 2014 on alexander)
+   * Poly/ML 5.6 Release RTS version: X86_64-5.6
+   * SML# 3.0.1 (2016-04-04 22:16:17 JST) for x86_64-pc-linux-gnu with
+     LLVM 3.7.1
+Inquiries and recommendations on improving compatibility are welcome.
+The following sections provide simple installation instructions for each
+system.  A different 'Makefile' is supplied for each system, but in all
+of them 'make all' will produce the library and/or a test program, while
+'make test' will additionally run the test program.  There is no 'make
+install', you must copy the files to an appropriate location by hand.
+All makefiles are currently dependent on GNU make.
+
+2.1 SML/NJ
+==========
+
+For Standard ML of New Jersey, the CM library specification 'qcheck.cm'
+should be all you need.  The default target of 'make -f Makefile.nj'
+will ask CM to build and stabilize this library.  This creates a file
+'.cm/x86-unix/qcheck.cm' (alter the arch/os tag as needed) which may be
+copied into the standard CM library path and added to the 'pathconfig'.
+
+   If you have multiple installations of SML/NJ, you may specify which
+one to use by providing its path on the 'make' command line, like this:
+
+     make -f Makefile.nj SML=~/nj49/bin/sml
+
+2.2 Moscow ML
+=============
+
+Building for Moscow ML is a little trickier; I benefitted enormously
+from the Mosmake system by Henning Makhlom.  Typing
+
+     make -f Makefile.moscow
+will generate a bunch of '.uo' and '.ui' files in the 'src/' directory.
+To use them in an interactive setting, give the path as a '-I' argument
+to 'mosml', like this:
+     % mosml -I src
+     load "QCheck";
+      -| > val it = () : unit
+     QCheck.pred;
+      -| > val 'a it = fn : ('a -> bool) -> 'a prop
+Or, copy all the '.uo' and '.ui' files to a different directory, and
+load them from there.
+
+   Using the library in compiled programs is more complex.  Mosmake will
+be a big help, but you will still need to figure out the dependencies to
+particular modules within QCheck.  Moscow ML does not currently have a
+way to package together a set of object files into a single library.
+
+   In addition to the default target,
+
+     make -f Makefile.moscow all
+creates a test program called 'compose' in the source directory, and the
+'test' target additionally runs the test.  You may specify the location
+of the 'mosmlc' compiler on the command line, in case the one you want
+to use is not first in your path:
+
+     make -f Makefile.moscow MOSMLC=~/mosml/bin/mosmlc
+
+2.3 MLton
+=========
+
+MLton is a whole-program compiler, so you cannot install QCheck as a
+library in the traditional sense.  You may, however, compile its source
+code along with your own to produce test programs.  The QCheck license
+(LGPL) permits incorporating the source even into proprietary programs.
+
+   The 'qcheck.cm' file is intended to be readable by MLton as well as
+SML/NJ.
+
+     make -f Makefile.mlton all
+will ask MLton to compile a test program called 'tests/tests'.  As
+always, the 'test' target will run the test program.  You may specify
+the path to the MLton compiler by setting the 'MLTON' variable on the
+command line.
+
+2.4 Poly/ML
+===========
+
+QCheck will also work with Poly/ML. In this case, there is nothing to
+compile in advance, but 'PolyML.make' will work if run from the 'src/'
+directory, like this:
+     OS.FileSys.chDir "src";
+     PolyML.make "QCheck";
+   See also the file 'tests/polytest.sml' for an example of how to use
+QCheck from Poly/ML. Running
+     make -f Makefile.poly test
+   will execute the unit tests for Poly/ML.
+
+2.5 SML#
+========
+
+QCheck will also work with SML#.  SML# requires separate compilation
+like below:
+     make -f Makefile.smlsharp
+   To use QCheck as a library from SML#, add '_require
+"/path/to/qcheck.smi"' to your .smi files.
+
+
+File: qcheck.info,  Node: Specifying test cases,  Next: Generating test cases,  Prev: Installation,  Up: Top
+
+3 Specifying test cases
+***********************
+
+     Once a human tester finds a bug, it should be the last time a human
+     tester finds that bug.  Automatic tests should check for it from
+     then on.
+                                           Andrew Hunt and David Thomas
+                                             'The Pragmatic Programmer'
+
+   Random testing is neat, and sometimes uncovers interesting cases that
+you may not have tried.  But to be sure you are covering specific cases,
+you need to specify them somehow.  The list example at the end of the
+overview is one way, but another is reading them from a file.  QCheck
+provides a small API for using files within a directory or lines within
+a text file as test cases.
+
+The following functions generate file and directory names as test cases.
+This is useful, for example, for regression tests of a compiler - just
+keep a directory of source files to be compiled.  The directory stream
+should be read all the way to the end, or else the directory handle will
+not be properly closed.  (The check function does this automatically.)
+
+     type dirstream
+     val openDir : string -> dirstream
+     val nextFile : (string, dirstream) reader
+Here is an example of how to run tests on filenames in a directory:
+         check (Files.nextFile, pretty_printer)
+               (test_name, test_predicate)
+               (Files.openDir directory_path)
+
+
+The following functions produce lines of text from a file as test cases.
+The produced strings include newlines, but see below for how to filter
+them.
+
+     type filestream
+     val openFile : string -> filestream
+     val nextLine : (string, filestream) reader
+
+Here are some simple utilities for readers.  The types should be
+self-explanatory.  The 'chop' function removes newlines from the ends of
+string readers (such as 'nextLine').
+
+     val map : ('a -> 'b) -> ('a,'c) reader -> ('b,'c) reader
+     val filter : ('a -> bool) -> ('a,'b) reader -> ('a,'b) reader
+     val chop : (string,'a) reader -> (string,'a) reader
+
+
+File: qcheck.info,  Node: Generating test cases,  Next: Properties,  Prev: Specifying test cases,  Up: Top
+
+4 Generating test cases
+***********************
+
+The QuickCheck tool for Haskell uses type classes so that arbitrary
+values of various types may be generated behind the scenes.  In SML, we
+need to be more explicit, but the same holds true in Haskell if we don't
+want the default generator (positive integers only, for example).  The
+'Gen' module holds a wide range of tools for creating random values of
+various structured types and, yes, even functions!
+
+We begin with the raw random number generator.  The 'new' function
+generates a seed based on the current time.  The 'range' function
+produces random integers between those in the given pair, inclusive.
+The generator is applicative, in the sense that it returns the new state
+of the random number generator.
+
+     type rand
+     val new : unit -> rand
+     val range : int * int -> rand -> int * rand
+The generator for a type takes a random number stream and produces a
+value of that type, along with the new state of the stream.
+     type 'a gen = rand -> 'a * rand
+     type ('a, 'b) co = 'a -> 'b gen -> 'b gen
+
+4.1 Random-value combinators
+============================
+
+'lift v' is a generator that always produces the given value.  'select'
+picks uniform randomly from the values in the vector, while 'choose'
+picks uniform randomly from the generators in the vector, to produce a
+value.  For example:
+        Gen.choose #[Gen.lift 42, Gen.Int.int]
+   will return the number 42 with 50% probability, and a random integer
+otherwise (but recall that 'Gen.Int.int' is biased toward zero and the
+extrema).  The primed version pairs each generator with an integer
+weight to bias the choice (making it non-uniform).
+     val lift : 'a -> 'a gen
+     val select : 'a vector -> 'a gen
+     val choose : 'a gen vector -> 'a gen
+     val choose' : (int * 'a gen) vector -> 'a gen
+The functions ending in 'L' are the same, except they operate on lists
+instead of vectors.
+     val selectL : 'a list -> 'a gen
+     val chooseL : 'a gen list -> 'a gen
+     val chooseL' : (int * 'a gen) list -> 'a gen
+   Here are some basic map and filtering functions over generators.
+     val filter : ('a -> bool) -> 'a gen -> 'a gen
+     val zip : ('a gen * 'b gen) -> ('a * 'b) gen
+     val zip3 : ('a gen * 'b gen * 'c gen) ->
+                ('a * 'b * 'c) gen
+     val zip4 : ('a gen * 'b gen * 'c gen * 'd gen) ->
+                ('a * 'b * 'c * 'd) gen
+     val map : ('a -> 'b) -> 'a gen -> 'b gen
+     val map2 : ('a * 'b -> 'c) -> ('a gen * 'b gen) ->
+                'c gen
+     val map3 : ('a * 'b * 'c -> 'd) ->
+                ('a gen * 'b gen * 'c gen) -> 'd gen
+     val map4 : ('a * 'b * 'c * 'd -> 'e) ->
+                ('a gen * 'b gen * 'c gen * 'd gen) ->
+                'e gen
+
+'flip' is just like flipping a fair coin.  With 'flip'', the coin is
+biased by the pair of integers given: 'flip' (3,5)' will choose 'true'
+three-eights of the time, and 'false' five-eights.
+     val flip : bool gen
+     val flip' : int * int -> bool gen
+
+These produce lists or optional values by consulting the boolean
+generator about when to produce the nil list or 'NONE'.
+     val list : bool gen -> 'a gen -> 'a list gen
+     val option : bool gen -> 'a gen -> 'a option gen
+The following function produces any kind of sequential collection type,
+you just provide the 'tabulate' function as the first parameter.  The
+integer generator then determines how many elements the collection will
+have.
+     val vector : (int * (int -> 'a) -> 'b) ->
+                  int gen * 'a gen -> 'b gen
+Here is an example, showing how we can generate strings with 'vector':
+         Gen.vector CharVector.tabulate
+                    (Gen.range(6,10), Gen.select #[#"a", #"b", #"c"])
+   Here is a sample of the strings it generated in one test:
+      -| "abbacccbbb" : CharVector.vector
+      -| "bccbaabacb" : CharVector.vector
+      -| "aacbbbaba" : CharVector.vector
+      -| "aabbaca" : CharVector.vector
+      -| "acaacbb" : CharVector.vector
+      -| "cbbbccab" : CharVector.vector
+      -| "bbcaccca" : CharVector.vector
+
+
+Here are some basic co-generators.  'variant' takes a small non-negative
+'int' and performs simple unary branching.  'variant'' is similar but
+takes an additional bound to save the last split.  'variant'' is the
+building block of all other built-in co-generators.
+
+   Note: 'variant v' is equivalent to 'variant' (v+2, v)' for small 'v'.
+'variant' (b, v)' raises 'Subscript' if 'v < 0' or 'v >= b'.
+
+
+     val variant : (int,'b) co
+     val variant' : (int*int,'b) co
+     val arrow : ('a, 'b) co * 'b gen -> ('a -> 'b) gen
+     val cobool : (bool, 'b) co
+     val colist : ('a, 'b) co -> ('a list, 'b) co
+     val coopt : ('a, 'b) co -> ('a option, 'b) co
+
+These turn generators into a stream of values.  You can limit them by a
+given integer, or just use the default maximum number of values from the
+'Settings'.
+     type stream
+     val start : rand -> stream
+     val limit' : int -> 'a gen -> ('a,stream) reader
+     val limit : 'a gen -> ('a,stream) reader
+
+4.2 Basis types
+===============
+
+In addition to the general combinators, practically all of the SML Basis
+types have associated generators in sub-structures.  The following
+generators can be instantiated for whatever character and string types
+your implementation provides, such as 'Gen.WideText.charByType'.  For
+the default character and string types, however, these are found in the
+top-level of the 'Gen' structure.
+     type char
+     type string
+     type substring
+     val char : char gen
+     val charRange : char * char -> char gen
+     val charFrom : string -> char gen
+     val charByType : (char -> bool) -> char gen
+     val string : (int gen * char gen) -> string gen
+     val substring : string gen -> substring gen
+     val cochar : (char, 'b) co
+     val costring : (string, 'b) co
+     val cosubstring : (substring, 'b) co
+The functions in 'Gen.Int' (and 'Gen.Int32', 'Gen.IntInf', etc.)
+generate integers in various ranges.  They can easily be instantiated
+for whatever integer types your implementation provides.  They are
+biased so that zero, 'maxInt', and 'minInt' (if they exist) are
+generated much more often than other integers.
+     eqtype int
+     val int : int gen
+     val pos : int gen
+     val neg : int gen
+     val nonpos : int gen
+     val nonneg : int gen
+     val coint : (int, 'b) co
+The functions generating unsigned words are in structures such as
+'Gen.Word', 'Gen.Word8', 'Gen,Word32', etc., depending on your
+implementation.
+     eqtype word
+     val word : word gen
+     val coword : (word, 'b) co
+These are in 'Gen.Real' structure.  Currently, real numbers are
+generated from strings of (decimal) digits, rather than from bits.  So
+some valid reals will never be generated.  This may not be sufficient
+for testing numerical code.
+     type real
+     val real : real gen
+     val frac : real gen
+     val pos : real gen
+     val neg : real gen
+     val nonpos : real gen
+     val nonneg : real gen
+     val finite : real gen
+Generate dates and times from 'Gen.DateTime'.  The 'dateFromYear'
+function uses the given generator to produce the year, but then it comes
+up with a month, day, hour, minute, and second itself.  A few days are
+more likely than others because we do not bother to generate the correct
+number of days based on the month.  This makes May 1st more likely than
+May 2nd, because it could also have been generated as April 31st.  (The
+Basis 'Date.date' normalizes the dates though, so you will never see
+April 31st.)
+     val weekday : Date.weekday gen
+     val month : Date.month gen
+     val dateFromYear : int gen -> Date.date gen
+     val time : Time.time gen
+
+4.3 Recursive types
+===================
+
+As pointed out in the QuickCheck paper, one needs to be careful when
+generating tree-structured data, due to the strong possibility of
+non-termination.  To avoid this problem, make the generator a function
+of a decreasing integer parameter.  When that parameter reaches zero,
+the only choice is to return a leaf.
+
+     datatype tree = Node of tree * tree | Leaf of int
+     fun gentree 0 = Gen.map Leaf Gen.Int.int
+       | gentree n =
+         Gen.choose' #[(1,Gen.map Leaf Gen.Int.int),
+                       (4,Gen.map Node (Gen.zip(gentree(n div 2),
+                                                gentree(n div 2))))]
+
+
+File: qcheck.info,  Node: Properties,  Next: Settings,  Prev: Generating test cases,  Up: Top
+
+5 Properties
+************
+
+A predicate is just a boolean function over some type.  A property
+carries some additional data about preconditions and statistics.
+
+     type 'a pred = 'a -> bool
+     type 'a prop
+     val pred : 'a pred -> 'a prop
+     val pred2 : ('a * 'b) pred -> 'b -> 'a  prop
+
+This function and operator are the same: they construct conditional
+properties.  Test cases that fail the precondition are not counted.
+     val implies : 'a pred * 'a prop -> 'a prop
+     val ==> : 'a pred * 'a pred -> 'a prop
+
+
+5.1 Statistical distribution
+============================
+
+One problem with random test-case generation is that we don't know for
+sure what we're getting.  QCheck provides a way to observe the
+distribution of test cases by tagging them based on user-definable
+criteria.  For example, suppose we want to test the 'ListMergeSort'
+module in the SML/NJ library, by generating random integer lists.
+
+   If we generate and pass 100 cases, what does that mean?  Sorting a
+list with fewer than 2 elements is pretty easy, so how many of our 100
+cases are that trivial?  Also, how many of the lists are already
+ordered?  The following functions are designed to help you answer such
+questions.
+
+     val trivial : 'a pred -> 'a prop -> 'a prop
+     val classify : 'a pred -> string -> 'a prop -> 'a prop
+     val classify' : ('a -> string option) -> 'a prop ->
+                     'a prop
+Here are some examples of how they work.
+     fun fewer_than n L = length L < n
+
+     val sort_ok = ListMergeSort.sorted op> o
+                   ListMergeSort.sort op>
+
+     val sort_test = trivial (fewer_than 2)
+                    (classify (ListMergeSort.sorted op>) "pre-sorted"
+                    (pred sort_ok))
+
+     checkGen (Gen.list (Gen.flip'(1,9)) Gen.Int.int, NONE)
+              ("ListMergeSort", sort_test)
+   Now the test result, if passing, will be accompanied with some
+statistics on the distribution of the specified properties.
+     -| ListMergeSort..........ok      (100 passed)         33% pre-sorted
+     -|                                                     28% trivial
+   The functions 'classify' and 'trivial' are specializations of the
+more general 'classify'' (prime), with which we can provide a function
+that returns the tag.  To see the complete distribution of list lengths,
+try this:
+     fun sizeTag n =
+         "length "^ StringCvt.padLeft #" " 3 (Int.toString n)
+
+     val sort_test = classify' (SOME o sizeTag o length) (pred sort_ok)
+     checkGen (Gen.list (Gen.flip'(1,9)) Gen.Int.int, NONE)
+              ("ListMergeSort", sort_test)
+
+     -| ListMergeSort..........ok      (100 passed)         13% length   0
+     -|                                                      7% length   1
+     -|                                                      6% length   2
+     -|                                                     13% length   3
+     -|                                                      8% length   4
+     -|                                                      6% length   5
+     -|                                                      3% length   6
+     -|                                                      2% length   7
+     -|                                                      5% length   8
+     -|                                                      5% length   9
+     -|                                                      2% length  10
+     -|                                                      5% length  11
+     -|                                                      3% length  12
+   The list goes on: the maximum length list generated in this run was
+43.
+
+
+
+5.2 Results
+===========
+
+     type result = bool option
+     type stats = { tags : StringBag.bag,
+                    count : int }
+
+     val test : 'a prop -> 'a * stats -> result * stats
+     val stats : stats
+     val success : result pred
+     val failure : result pred
+
+
+File: qcheck.info,  Node: Settings,  Next: Release notes,  Prev: Properties,  Up: Top
+
+6 Settings
+**********
+
+     type 'a control
+     val get : 'a control -> 'a
+     val set : 'a control * 'a -> unit
+Many run-time parameters can be adjusted before running your unit tests.
+
+     val gen_target : int option control
+   Number of valid random cases to test.  Default is 100.
+
+     val gen_max : int control
+Maximum number of random cases to consider; stop after this many even if
+'gen_target' has not been reached.  Default is 400.
+
+     val examples : int option control
+   Maximum number of counter-examples to report.  Default is 5.
+
+     val sort_examples : bool control
+   Whether counter-examples should appear shortest first.  Default is
+true.
+
+     val outstream : TextIO.outstream control
+   Output stream for test results.
+
+     val column_width : int control
+Width of test name column.  Its interpretation depends on the output
+style.  Default is 22.
+
+     val show_stats : bool control
+   Show distribution of test cases.  Default is true.
+
+     val style :
+         { name: string,
+           ctor: string ->
+                 { status: string option * Property.result
+                           * Property.stats -> unit,
+                   finish: Property.stats -> bool } } control
+   This controls the style of the output.  See below.
+
+6.1 Pluggable output styles
+===========================
+
+The default output style ('PerlStyle.style') is modeled after the
+unit-testing framework for Perl.  It makes room for statistics and
+counter-examples, while leaving clear a column down the middle where the
+"ok/FAILED" results can be easily read.  The Perl style uses the
+carriage return character \r to update the current line with each test -
+this is a useful progress indicator for tests that take a long time.
+
+   Output styles are completely configurable just by writing a function
+of a particular type.  An alternate style is provided, which is meant to
+mesh well with the output of the SML/NJ Compilation Manager (CM), like
+this:
+
+      -| [testing Bool/to-from... ok]
+      -| [testing Bool/from-to... ok]
+      -| [testing Bool/valid... FAILED]
+      -| Bool/valid:1.0 Error: False
+      -| Bool/valid:2.0 Error: True
+   To select this style, just do:
+         Settings.set(Settings.style, CMStyle.style);
+
+
+File: qcheck.info,  Node: Release notes,  Next: License,  Prev: Settings,  Up: Top
+
+7 Release notes
+***************
+
+version 1.2
+-----------
+
+   * Released 23 May 2016
+   * Support shrinking of test cases
+   * License changed to BSD
+   * Compatibility fixes for more recent MoscowML and PolyML
+   * Support SML#
+
+version 1.1
+-----------
+
+   * Released 14 April 2008
+   * Updated to fix WideText structure in MLton 20070826
+   * Minor build system updates
+
+version 1.0
+-----------
+
+   * Released 15 April 2007
+   * Major documentation updates - now there's a full manual, not just a
+     README file.
+   * Support for Poly/ML, which required some major restructuring.
+   * Minor build system updates.  Now available as a darcs repository.
+
+version 0.8a
+------------
+
+   * Released 14 September 2004
+   * Added support for MLton and Moscow ML.
+
+version 0.7
+-----------
+
+   * Released 9 June 2004
+   * First public release, worked only for SML/NJ.
+
+
+File: qcheck.info,  Node: License,  Next: Index,  Prev: Release notes,  Up: Top
+
+8 License
+*********
+
+Copyright (C)2007 Christopher League
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+Redistributions of source code must retain the above copyright notice,
+this list of conditions and the following disclaimer.
+
+Redistributions in binary form must reproduce the above copyright
+notice, this list of conditions and the following disclaimer in the
+documentation and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
+THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY
+DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
+USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
+IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+
+
+File: qcheck.info,  Node: Index,  Prev: License,  Up: Top
+
+Index
+*****
+
+ [index ]
+* Menu:
+
+* ==>:                                   Properties.          (line  18)
+* arrow:                                 Generating test cases.
+                                                              (line 104)
+* boundary condition:                    Overview.            (line  85)
+* char:                                  Generating test cases.
+                                                              (line 126)
+* char <1>:                              Generating test cases.
+                                                              (line 129)
+* charByType:                            Generating test cases.
+                                                              (line 132)
+* charFrom:                              Generating test cases.
+                                                              (line 131)
+* charRange:                             Generating test cases.
+                                                              (line 130)
+* check:                                 Overview.            (line 186)
+* checkGen:                              Overview.            (line 208)
+* checkGenShrink:                        Overview.            (line 220)
+* checkOne:                              Overview.            (line 215)
+* choose:                                Generating test cases.
+                                                              (line  41)
+* choose':                               Generating test cases.
+                                                              (line  42)
+* chooseL:                               Generating test cases.
+                                                              (line  46)
+* chooseL':                              Generating test cases.
+                                                              (line  47)
+* chop:                                  Specifying test cases.
+                                                              (line  48)
+* classify:                              Properties.          (line  37)
+* classify':                             Properties.          (line  38)
+* co:                                    Generating test cases.
+                                                              (line  25)
+* cobool:                                Generating test cases.
+                                                              (line 105)
+* cochar:                                Generating test cases.
+                                                              (line 135)
+* coint:                                 Generating test cases.
+                                                              (line 149)
+* colist:                                Generating test cases.
+                                                              (line 106)
+* column_width:                          Settings.            (line  29)
+* compatibility:                         Installation.        (line  15)
+* Compilation Manager:                   Installation.        (line  26)
+* conditional:                           Overview.            (line  59)
+* context:                               Overview.            (line 242)
+* control:                               Settings.            (line   7)
+* coopt:                                 Generating test cases.
+                                                              (line 107)
+* costring:                              Generating test cases.
+                                                              (line 136)
+* cosubstring:                           Generating test cases.
+                                                              (line 137)
+* counter-example:                       Overview.            (line  38)
+* coword:                                Generating test cases.
+                                                              (line 155)
+* cpsCheck:                              Overview.            (line 235)
+* dateFromYear:                          Generating test cases.
+                                                              (line 178)
+* DateTime structure:                    Generating test cases.
+                                                              (line 168)
+* dirstream:                             Specifying test cases.
+                                                              (line  25)
+* examples:                              Settings.            (line  19)
+* failure:                               Properties.          (line  95)
+* Files structure:                       Overview.            (line 153)
+* filestream:                            Specifying test cases.
+                                                              (line  38)
+* FILES_SIG signature:                   Specifying test cases.
+                                                              (line  19)
+* filter:                                Specifying test cases.
+                                                              (line  47)
+* filter <1>:                            Generating test cases.
+                                                              (line  49)
+* finite:                                Generating test cases.
+                                                              (line 167)
+* flip:                                  Generating test cases.
+                                                              (line  67)
+* flip':                                 Generating test cases.
+                                                              (line  68)
+* frac:                                  Generating test cases.
+                                                              (line 162)
+* gen:                                   Generating test cases.
+                                                              (line  24)
+* Gen structure:                         Overview.            (line 152)
+* GENERATOR_SIG signature:               Generating test cases.
+                                                              (line  13)
+* gen_max:                               Settings.            (line  15)
+* gen_target:                            Settings.            (line  12)
+* get:                                   Settings.            (line   8)
+* implies:                               Properties.          (line  17)
+* int:                                   Generating test cases.
+                                                              (line 143)
+* int <1>:                               Generating test cases.
+                                                              (line 144)
+* Int structures:                        Generating test cases.
+                                                              (line 138)
+* lift:                                  Generating test cases.
+                                                              (line  39)
+* limit:                                 Generating test cases.
+                                                              (line 115)
+* limit':                                Generating test cases.
+                                                              (line 114)
+* list:                                  Generating test cases.
+                                                              (line  72)
+* map:                                   Specifying test cases.
+                                                              (line  46)
+* map <1>:                               Generating test cases.
+                                                              (line  55)
+* map2:                                  Generating test cases.
+                                                              (line  56)
+* map3:                                  Generating test cases.
+                                                              (line  58)
+* map4:                                  Generating test cases.
+                                                              (line  60)
+* MLton:                                 Installation.        (line  73)
+* month:                                 Generating test cases.
+                                                              (line 177)
+* Moscow ML:                             Installation.        (line  40)
+* neg:                                   Generating test cases.
+                                                              (line 146)
+* neg <1>:                               Generating test cases.
+                                                              (line 164)
+* new:                                   Generating test cases.
+                                                              (line  20)
+* nextFile:                              Specifying test cases.
+                                                              (line  27)
+* nextLine:                              Specifying test cases.
+                                                              (line  40)
+* nonneg:                                Generating test cases.
+                                                              (line 148)
+* nonneg <1>:                            Generating test cases.
+                                                              (line 166)
+* nonpos:                                Generating test cases.
+                                                              (line 147)
+* nonpos <1>:                            Generating test cases.
+                                                              (line 165)
+* openDir:                               Specifying test cases.
+                                                              (line  26)
+* openFile:                              Specifying test cases.
+                                                              (line  39)
+* option:                                Generating test cases.
+                                                              (line  73)
+* outstream:                             Settings.            (line  26)
+* Poly/ML:                               Installation.        (line  90)
+* polymorphic:                           Overview.            (line  38)
+* pos:                                   Generating test cases.
+                                                              (line 145)
+* pos <1>:                               Generating test cases.
+                                                              (line 163)
+* pred:                                  Properties.          (line  10)
+* pred <1>:                              Properties.          (line  12)
+* pred2:                                 Properties.          (line  13)
+* prop:                                  Properties.          (line  11)
+* QCHECK_SIG signature:                  Overview.            (line 152)
+* rand:                                  Generating test cases.
+                                                              (line  19)
+* range:                                 Generating test cases.
+                                                              (line  21)
+* reader:                                Overview.            (line 175)
+* real:                                  Generating test cases.
+                                                              (line 160)
+* real <1>:                              Generating test cases.
+                                                              (line 161)
+* Real structure:                        Generating test cases.
+                                                              (line 156)
+* recursive types:                       Generating test cases.
+                                                              (line 184)
+* rep:                                   Overview.            (line 176)
+* result:                                Properties.          (line  88)
+* select:                                Generating test cases.
+                                                              (line  40)
+* selectL:                               Generating test cases.
+                                                              (line  45)
+* set:                                   Settings.            (line   9)
+* Settings structure:                    Overview.            (line 154)
+* show_stats:                            Settings.            (line  33)
+* SML#:                                  Installation.        (line 103)
+* SML/NJ:                                Installation.        (line  26)
+* sort_examples:                         Settings.            (line  22)
+* start:                                 Generating test cases.
+                                                              (line 113)
+* stats:                                 Properties.          (line  89)
+* stats <1>:                             Properties.          (line  93)
+* stream:                                Generating test cases.
+                                                              (line 112)
+* string:                                Generating test cases.
+                                                              (line 127)
+* string <1>:                            Generating test cases.
+                                                              (line 133)
+* style:                                 Settings.            (line  36)
+* substring:                             Generating test cases.
+                                                              (line 128)
+* substring <1>:                         Generating test cases.
+                                                              (line 134)
+* success:                               Properties.          (line  94)
+* termination:                           Generating test cases.
+                                                              (line 184)
+* test:                                  Properties.          (line  92)
+* time:                                  Generating test cases.
+                                                              (line 179)
+* trivial:                               Properties.          (line  36)
+* variant:                               Generating test cases.
+                                                              (line 102)
+* variant':                              Generating test cases.
+                                                              (line 103)
+* vector:                                Generating test cases.
+                                                              (line  78)
+* version:                               Overview.            (line 241)
+* weekday:                               Generating test cases.
+                                                              (line 176)
+* word:                                  Generating test cases.
+                                                              (line 153)
+* word <1>:                              Generating test cases.
+                                                              (line 154)
+* Word structures:                       Generating test cases.
+                                                              (line 150)
+* zip:                                   Generating test cases.
+                                                              (line  50)
+* zip3:                                  Generating test cases.
+                                                              (line  51)
+* zip4:                                  Generating test cases.
+                                                              (line  53)
+
+
+
+Tag Table:
+Node: Top73
+Node: Overview1065
+Node: Installation11372
+Node: Specifying test cases15550
+Node: Generating test cases17697
+Node: Properties26119
+Node: Settings30128
+Node: Release notes32453
+Node: License33401
+Node: Index34795
+
+End Tag Table

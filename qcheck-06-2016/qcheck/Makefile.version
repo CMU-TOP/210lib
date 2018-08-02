@@ -1,0 +1,46 @@
+# -*- Makefile -*-
+PERL = perl
+EMACS = emacs
+TEXI2HTML = texi2html -split chapter
+
+SML = sml
+CM = .cm
+
+MOSMLC = mosmlc
+MOSML = mosml
+MOSMLFLAGS =
+MOSMAKE = compat/moscow/mosmake
+MOSMAKEDIRS = src tests
+
+MLTON = mlton
+POLY = poly
+SMLSHARP = smlsharp
+
+MAJOR=1
+MINOR=2
+VERSION=$(MAJOR).$(MINOR)
+RELEASED=April 2008
+VERSION_SRC=src/QCheckVersion.sml
+
+$(VERSION_SRC): Makefile.version
+	echo 'structure QCheckVersion = struct'      >$@
+	echo 'val version = ($(MAJOR),$(MINOR)) '   >>$@
+	printf 'val context = "'                    >>$@
+	printf `git describe --tags --dirty=+`      >>$@
+	echo '" end'                                >>$@
+
+doc/qcheck-ver.texi: Makefile.version
+	echo '@set VERSION $(VERSION)'    >$@
+	echo '@set RELEASED $(RELEASED)' >>$@
+
+doc/sml-ver.texi: Makefile.version
+	echo '@item'  >$@
+	$(SML) </dev/null | head -1 >>$@
+	echo '@item'  >>$@
+	$(MOSMLC) -v | grep 'compiler version' >>$@
+	echo '@item'  >>$@
+	$(MLTON) >>$@
+	echo '@item'  >>$@
+	$(POLY) -v >>$@
+	echo '@item'  >>$@
+	$(SMLSHARP) -v >>$@

@@ -1,0 +1,18 @@
+../dist/210lib.mlb
+compilation/common.mlb
+
+signatures/sequence/DumbListSequence.sml
+signatures/sequence/MkTestSequence.sml
+
+structures/sequence/TestArraySequence.sml
+structures/sequence/TestListSequence.sml
+structures/sequence/DumbSTListSequence.sml
+structures/sequence/TestMkSTSequence.sml
+
+(* under construction *)
+signatures/set/RANDKEY.sig
+signatures/set/MkDumbListSet.sml
+signatures/set/MkTestSet.sml
+structures/table/TestMkTreapTable.sml
+
+main.sml

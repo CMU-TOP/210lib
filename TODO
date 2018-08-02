@@ -1,0 +1,99 @@
+(* Author: Sam Westrick (swestric@cs.cmu.edu)
+ *
+ * Brainstorm for library changes.
+ *)
+
+================================== LAZINESS ==================================
+
+Implement partially lazy array sequences, for fusioning. See lectures/play/lazy
+for inspiration. Need to establish a healthy cost semantics, to describe
+laziness succinctly for the user. Here are some notes.
+
+datatype 'a seq =
+  Full of 'a ArraySequence.t
+  (* Lazy (s, i, j, f) represents the sequence [ f(i+ks) : 0 <= k < (j-i)/s ] *)
+| Lazy of int * int * int * (int -> 'a)
+  (* Nest (n, off, xss) is a lazy flattened sequence of total length n, and
+   * intermediate offsets given by off. I.e. xss[i] has length off[i+1]-off[i].
+   * This clearly requires lazy flatten to eagerly perform the scan to
+   * calculate offsets. *)
+| Nest of int * int ArraySequence.t * 'a seq ArraySequence.t
+
+This allows map to be implemented as something like the following.
+  fun map f s =
+    case s of
+      Full xs => Lazy (1, 0, length s, fn i => f (nth s i))
+    | Lazy (s, i, j, g) => Lazy (s, i, j, f o g)
+    | Nest (n, off, xss) => Nest (n, off, ArraySequence.map (map f) xss)
+
+Although, now we notice that map is O(1) except for the Nest case, which is
+gross. Can we get around this?
+
+Deprecate tabulate, in favor of lazy range generator
+  val range : int * int -> int seq
+Thus tabulate becomes
+  fun tabulate f n = map f (range (0, n))
+Perhaps also have a strided version of range, i.e.
+  val range' : int -> int * int -> int seq
+where range' s (i, j) lazily produces the sequence [ i+ks : 0 <= k < (j-i)/s ].
+Thus range = range' 1. Should have a better name than range', though.
+
+The lazy range primitive makes it possible to express a reduce without ever
+allocating an array. For example, consider `reduce op+ 0 (range (0, n))`.
+
+Creating a good cost semantics for laziness will be challenging. Notice that
+for standard sequences, we require the user to keep track of the lengths of
+sequences in their heads (these are not encoded in types). Now they will need
+to keep track of lazy/non-lazy. Hopefully there is a simple quantity to attach
+to sequences to capture laziness. Here's an initial attempt, assuming that
+we discover how to make `map` actually O(1).
+
+  Let W(e) and S(e) be the work and span of expression e.
+  Let L(e) be the length of sequence e.
+  Let D(e) be the debt of e.
+  -- means "not applicable"
+  
+   e           | W(e)  | S(e)  | L(e)  | D(e)
+  -------------+-------+-------+-------+-------------------------------
+   nth s i     | ??    | ??    | --    | --
+   range (0,n) | 1     | 1     | n     | n
+   map f s     | 1     | 1     | L(s)  | D(s) + sum_i^L(s) (1 + D(f(s[i])))
+                                                                ^
+                                                 Is this correct? Or do we need
+                                                 to add W(f(s[i])) too?
+
+This cost semantics is broken though, since `nth` would need to generate a
+single element, so we need to track debt for individual elements... 
+
+============== GRANULARITY AND PERFORMANCE CONFIGURATION OPTIONS ==============
+
+Give every function a performance configuration argument, to control
+granularity and related concepts. For example, below, `gran` controls the
+grain size and `reassoc` controls whether or not reduce/scan are allowed to
+reassociate the given combining function into an iterate at the leaves. For some
+functions, say `reduce merge`, reassoc should be false (`iterate merge` is
+asymptotically slower than `reduce merge`). For `reduce op+`, however, reassoc
+should clearly be true.
+
+  type perf = { gran : int
+              , reassoc : bool
+              , ...
+              }
+
+Then (almost) all functions will take a perf as an argument.
+  val reduce : perf -> ('a * 'a -> 'a) -> 'a -> 'a seq -> 'a
+
+perfs should be configurable:
+  val gran : int -> perf -> perf
+
+For pedagogical reasons, there should be a second version of the library with
+the perf argument fixed to a set of "safe" defaults, i.e.
+
+  structure SimpleArraySequence =
+  struct
+    val default : perf = {gran = 1, reassoc = false, ...}
+    ...
+    fun reduce f b s = PerfArraySequence.reduce default f b s
+    ...
+  end
+  

@@ -1,0 +1,12 @@
+../../dist/210lib.mlb
+$(SML_LIB)/basis/basis.mlb
+
+../qcheck-06-2016/qcheck/qcheck.mlb
+
+../common/Gen.sml
+../common/Show.sml
+../common/Eq.sml
+../common/Test.sml
+
+../common/Ranked.sml
+../common/Trace.sml

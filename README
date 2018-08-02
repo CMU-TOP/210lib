@@ -1,0 +1,12 @@
+The 210 library and documentation.
+
+dist/ contains the main 210 library that is released to students.
+
+test/ contains a test framework for the library so nothing breaks.
+
+perf/ contains a performance testing framework, to verify that .fj
+implementations are actually fast.
+
+Remember to run "git submodule init" and "git submodule update"
+to pull in the QCheck library before running the tests.
+
