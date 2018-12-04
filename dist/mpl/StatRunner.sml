@@ -14,8 +14,8 @@ struct
     in
       (result,
        String.concat [
-         "wall-elapsed ", LargeInt.toString (Time.toMilliseconds elapsedTime), " ms\n"
-        ])
+         "wall-elapsed ", Time.fmt 4 elapsedTime, "\n"
+       ])
     end
 
 end

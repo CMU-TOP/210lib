@@ -330,7 +330,8 @@ struct
      * performance. *)
     fun shallowReduce f g s =
       case splitMid s of
-        (EMPTY | ONE _) => f s
+        EMPTY => f s
+      | ONE _ => f s
       | PAIR (l, r) => g (Primitives.par (fn () => shallowReduce f g l,
                                           fn () => shallowReduce f g r))
   end

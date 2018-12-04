@@ -6,6 +6,7 @@ local
 
    ../signatures/sequence/SEQUENCE.sig
    ../signatures/sequence/SEQUENCE_G.sig
+   ../signatures/sequence/SEQUENCE_EXTRA.sig
    ../signatures/sequence/ST_SEQUENCE.sig
 
    ../signatures/misc/MONOID.sig
@@ -37,6 +38,7 @@ local
 in
    signature SEQUENCE
    signature SEQUENCE_G
+   signature SEQUENCE_EXTRA
    signature ST_SEQUENCE
 
    signature BST

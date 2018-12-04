@@ -1,0 +1,134 @@
+210basis.fj.mlb
+
+local
+  $(SML_LIB)/basis/basis.mlb
+  $(SML_LIB)/basis/mlton.mlb
+  $(SML_LIB)/basis/unsafe.mlb
+  $(SML_LIB)/basis/schedulers/shh.mlb
+
+  mpl/PRIMITIVES.sig
+  signatures/misc/MONOID.sig
+  signatures/misc/GRANULARITY_CONTROL.sig
+  signatures/sequence/SEQUENCE.sig
+  signatures/sequence/SEQUENCE_EXTRA.sig
+  signatures/sequence/ST_SEQUENCE.sig
+  signatures/misc/HASHING.sig
+  signatures/key/EQKEY.sig
+  signatures/key/ORDKEY.sig
+  signatures/key/HASHKEY.sig
+  signatures/key/ELEMENT.sig
+  signatures/bst/BST.sig
+  signatures/bst/AUG_BST.sig
+  signatures/set/SET.sig
+  signatures/set/ORDSET.sig
+  signatures/table/TABLE.sig
+  signatures/table/ORDTABLE.sig
+  signatures/table/AUG_ORDTABLE.sig
+  signatures/pq/PQ.sig
+  signatures/random/RANDOM210.sig
+
+  mpl/Primitives.sml
+  structures/misc/GranularityControl.sml
+
+  structures/sequence/SequenceGranularity.fj.sml
+  mpl/ArraySequence.sml
+  structures/sequence/ListSequence.sml
+  structures/sequence/MkSTSequence.sml
+  structures/sequence/ChunkedTreeSequence.sml
+
+  structures/misc/Hashing.sml
+  mpl/StatRunner.sml
+
+  structures/elements/IntElt.sml
+  structures/elements/StringElt.sml
+  structures/elements/UnitElt.sml
+  structures/elements/MkOptionElt.sml
+  structures/elements/MkTripleElt.sml
+  structures/elements/MkPairElt.sml
+  structures/elements/MkSeqElt.sml
+
+  (*structures/misc/PackReal64Little.sml*)
+  structures/elements/RealElt.sml
+
+  structures/bst/MkTreapBase.sml
+  structures/bst/MkTreap.sml
+  structures/bst/MkAugTreap.sml
+
+  structures/table/MkBSTTable.sml
+  structures/table/MkBSTAugTable.sml
+  structures/table/MkTreapTable.sml
+  structures/table/MkTreapAugTable.sml
+
+  structures/random/MersenneTwister.sml
+  structures/random/DotMix.sml
+
+  structures/misc/CommandLineArgs.sml
+
+  structures/pq/MkLeftistHeapPQ.sml
+  structures/pq/MkSkewBinomialHeapPQ.sml
+in
+  signature PRIMITIVES
+  signature GRANULARITY_CONTROL
+
+  signature SEQUENCE
+  signature SEQUENCE_EXTRA
+  signature ST_SEQUENCE
+
+  signature BST
+  signature AUG_BST
+
+  signature SET
+  signature ORDSET
+
+  signature TABLE
+  signature ORDTABLE
+  signature AUG_ORDTABLE
+
+  signature EQKEY
+  signature ORDKEY
+  signature HASHKEY
+  signature ELEMENT
+
+  signature PQ
+
+  signature RANDOM210
+
+  signature PRIMITIVES
+  signature MONOID
+  signature HASHING
+
+  structure Primitives
+  structure GranularityControl
+  structure SequenceGranularity
+  structure StatRunner
+  structure Hashing
+  structure CommandLineArgs
+
+  structure ArraySequence
+  structure ListSequence
+  functor MkSTSequence
+  structure ChunkedTreeSequence
+
+  structure IntElt
+  structure StringElt
+  structure UnitElt
+  functor MkOptionElt
+  functor MkTripleElt
+  functor MkPairElt
+  functor MkSeqElt
+
+  functor MkAugTreap
+  functor MkTreap
+
+  functor MkBSTTable
+  functor MkBSTAugTable
+  functor MkTreapTable
+  functor MkTreapAugTable
+
+  functor MkDotMixParams
+  structure DotMix
+  structure MersenneTwister
+
+  functor MkLeftistHeapPQ
+  functor MkSkewBinomialHeapPQ
+end

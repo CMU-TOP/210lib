@@ -4,21 +4,20 @@ local
    signatures.mlb
    primitives.mlb
 
-   local
-      ../structures/sequence/ArraySequence.sml
-   in
-      ../structures/sequence/ArraySequenceG.sml
-   end
+  ../structures/sequence/array/TransparentArraySequence.sml
+  ../structures/sequence/array/TransparentSerialArraySequence.sml
+  ../structures/sequence/array/ArraySequences.sml
 
    ../structures/sequence/ListSequence.sml
    ../structures/sequence/MkSTSequence.sml
    ../structures/sequence/ChunkedTreeSequence.sml
 in
+   signature SEQUENCE_EXTRA
    signature SEQUENCE
    signature SEQUENCE_G
    signature ST_SEQUENCE
 
-   structure ArraySequence = ArraySequenceG
+   structure ArraySequence
    structure ListSequence
    functor MkSTSequence
    structure ChunkedTreeSequence
