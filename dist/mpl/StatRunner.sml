@@ -22,18 +22,17 @@ struct
       val endGC = getGCTimes ()
       val endTime = Time.now ()
 
-      val wallms = Time.toMilliseconds (Time.- (endTime, startTime))
+      val elapsedTime = Time.toReal (Time.- (endTime, startTime))
 
-      val totalgcms = Vector.foldl op+ 0
+      val totalGCTime = Vector.foldl op+ 0.0
         (Vector.tabulate (P, fn p =>
-          Time.toMilliseconds (Time.- (Vector.sub (endGC, p), Vector.sub (startGC, p)))))
+          Time.toReal (Time.- (Vector.sub (endGC, p), Vector.sub (startGC, p)))))
 
-      val percentGC =
-        100.0 * (Real.fromLargeInt (totalgcms) / Real.fromLargeInt (wallms * LargeInt.fromInt P))
+      val percentGC = 100.0 * totalGCTime / (elapsedTime * Real.fromInt P)
     in
       (result,
        String.concat [
-         "wall ", LargeInt.toString wallms, " ms\n",
+         "wall ", Int.toString (Real.round (1000.0 * elapsedTime)), " ms\n",
          "gc   ", Int.toString (Real.round percentGC) ^ "%\n"
        ])
     end
