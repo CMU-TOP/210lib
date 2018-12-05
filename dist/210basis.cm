@@ -20,5 +20,6 @@ Library
   structure Word
   structure Word8
   structure Word31
+  structure Word64
 is
   $/basis.cm

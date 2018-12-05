@@ -22,4 +22,5 @@ in
   structure VectorSlice
   structure Word
   structure Word8
+  structure Word64
 end
