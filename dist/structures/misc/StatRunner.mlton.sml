@@ -12,6 +12,10 @@ struct
       Time.+ (utime, stime)
     end
 
+  fun rtos r =
+    Int.toString (Real.round r)
+    handle Domain => "-"
+
   fun run (f : unit -> 'a) : 'a * string =
     let
       val startTime = Time.now ()
@@ -29,8 +33,8 @@ struct
     in
       (result,
        String.concat [
-         "wall ", Int.toString (Real.round (1000.0 * elapsedTime)), " ms\n",
-         "gc   ", Int.toString (Real.round percentGC), "%\n"
+         "wall ", rtos (1000.0 * elapsedTime), " ms\n",
+         "gc   ", rtos percentGC, "%\n"
        ])
     end
 
